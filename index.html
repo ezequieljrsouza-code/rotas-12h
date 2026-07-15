@@ -58,13 +58,13 @@
   }
   .wrap {
     display: flex;
-    gap: 16px;
+    gap: 20px;
     align-items: flex-start;
+    justify-content: center;
   }
   .panel {
     flex: 1;
     min-width: 0;
-    border: 1px solid #d9e0c5;
     border-radius: 6px;
     overflow: hidden;
     background: #fff;
@@ -83,7 +83,7 @@
     padding: 8px 10px;
   }
   .total-cell {
-    text-align: right;
+    text-align: center;
     color: #2f4858;
     font-weight: 600;
     font-size: 13px;
@@ -96,14 +96,12 @@
     padding: 6px 8px;
     font-size: 11.5px;
     text-align: center;
-    border-top: 1px solid #a6cf3d;
   }
   tbody tr:nth-child(odd) td { background: #f4f6ea; }
   tbody tr:nth-child(even) td { background: #ffffff; }
   tbody td {
     padding: 5px 8px;
     text-align: center;
-    border-bottom: 1px solid #eef1e2;
     color: #333;
     white-space: nowrap;
   }
@@ -116,6 +114,24 @@
     text-align: center;
     color: #999;
     font-size: 12.5px;
+  }
+  .report-box {
+    max-width: 900px;
+    margin: 24px auto 0;
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .report-box h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #2f4858;
+  }
+  .report-box .report-line {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #333;
+    white-space: pre-line;
   }
 </style>
 </head>
@@ -167,6 +183,11 @@
       </table>
     </div>
   </div>
+</div>
+
+<div class="report-box">
+  <h3>Report automático</h3>
+  <div class="report-line" id="reportBox">Suba o CSV para gerar o report automático.</div>
 </div>
 
 <script>
@@ -271,6 +292,7 @@ function handleFile(e) {
 
       currentData = data;
       renderTables(data);
+      renderReport(data);
       document.getElementById('downloadBtn').disabled = false;
     } catch (err) {
       document.getElementById('statusMsg').textContent = 'Erro: ' + err.message;
@@ -298,6 +320,44 @@ function renderTables(data) {
   renderRows('bodyMe', data.me_extra);
   document.getElementById('totalMlp').textContent = 'Total: ' + data.driver.length;
   document.getElementById('totalMe').textContent = 'Total: ' + data.me_extra.length;
+}
+
+function renderReport(data) {
+  const groups = [];
+
+  const meByFacility = {};
+  data.me_extra.forEach(it => {
+    meByFacility[it.facility] = (meByFacility[it.facility] || 0) + 1;
+  });
+  Object.keys(meByFacility).forEach(fac => {
+    groups.push({ count: meByFacility[fac], label: 'ME Extra - ' + fac });
+  });
+
+  const mlpByKey = {};
+  data.driver.forEach(it => {
+    const key = it.mlp + '||' + it.facility;
+    mlpByKey[key] = (mlpByKey[key] || 0) + 1;
+  });
+  Object.keys(mlpByKey).forEach(key => {
+    const parts = key.split('||');
+    groups.push({ count: mlpByKey[key], label: 'MLP - ' + parts[0] + ' - ' + parts[1] });
+  });
+
+  groups.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+  const total = data.driver.length + data.me_extra.length;
+
+  if (total === 0) {
+    document.getElementById('reportBox').textContent = 'Nenhuma rota acima de 12h encontrada no arquivo carregado.';
+    return;
+  }
+
+  let text = 'O indicador de Rotas >12h finalizou o dia com ' + total + ' rotas, sendo:\n';
+  groups.forEach(g => {
+    text += '> ' + String(g.count).padStart(2, '0') + ' ' + g.label + '\n';
+  });
+
+  document.getElementById('reportBox').textContent = text.trim();
 }
 
 function downloadXlsx() {
