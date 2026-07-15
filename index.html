@@ -72,6 +72,7 @@
   table {
     border-collapse: collapse;
     width: 100%;
+    table-layout: fixed;
     font-size: 12.5px;
   }
   .title-row th {
@@ -104,6 +105,8 @@
     text-align: center;
     color: #333;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .scroll {
     max-height: 560px;
@@ -122,12 +125,34 @@
     border-radius: 8px;
     padding: 16px 20px;
   }
-  .report-box h3 {
-    margin: 0 0 10px;
+  .report-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .report-head h3 {
+    margin: 0;
     font-size: 14px;
     color: #2f4858;
   }
-  .report-box .report-line {
+  #copyReportBtn {
+    background: #fff;
+    border: 1px solid #b6e04a;
+    color: #3b6d11;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #copyReportBtn:hover { background: #f4f6ea; }
+  #copyReportBtn:disabled {
+    color: #999;
+    border-color: #ddd;
+    cursor: not-allowed;
+  }
+  .report-line {
     font-size: 13px;
     line-height: 1.7;
     color: #333;
@@ -148,6 +173,10 @@
 <div class="wrap">
   <div class="panel">
     <table>
+      <colgroup>
+        <col style="width:17%"><col style="width:15%"><col style="width:16%">
+        <col style="width:26%"><col style="width:14%"><col style="width:12%">
+      </colgroup>
       <tr class="title-row">
         <th colspan="5">Rota &gt; 12h | MLP</th>
         <th class="total-cell" id="totalMlp">Total: 0</th>
@@ -158,6 +187,10 @@
     </table>
     <div class="scroll">
       <table>
+        <colgroup>
+          <col style="width:17%"><col style="width:15%"><col style="width:16%">
+          <col style="width:26%"><col style="width:14%"><col style="width:12%">
+        </colgroup>
         <tbody id="bodyMlp">
           <tr><td colspan="6" class="empty-hint">Suba o CSV para preencher esta tabela</td></tr>
         </tbody>
@@ -167,6 +200,10 @@
 
   <div class="panel">
     <table>
+      <colgroup>
+        <col style="width:17%"><col style="width:15%"><col style="width:16%">
+        <col style="width:26%"><col style="width:14%"><col style="width:12%">
+      </colgroup>
       <tr class="title-row">
         <th colspan="5">Rota &gt; 12h | ME Extra</th>
         <th class="total-cell" id="totalMe">Total: 0</th>
@@ -177,6 +214,10 @@
     </table>
     <div class="scroll">
       <table>
+        <colgroup>
+          <col style="width:17%"><col style="width:15%"><col style="width:16%">
+          <col style="width:26%"><col style="width:14%"><col style="width:12%">
+        </colgroup>
         <tbody id="bodyMe">
           <tr><td colspan="6" class="empty-hint">Suba o CSV para preencher esta tabela</td></tr>
         </tbody>
@@ -186,12 +227,16 @@
 </div>
 
 <div class="report-box">
-  <h3>Report automático</h3>
+  <div class="report-head">
+    <h3>Report automático</h3>
+    <button id="copyReportBtn" disabled>Copiar report</button>
+  </div>
   <div class="report-line" id="reportBox">Suba o CSV para gerar o report automático.</div>
 </div>
 
 <script>
 let currentData = { driver: [], me_extra: [] };
+let currentReportText = '';
 
 const HEADERS_NEEDED = [
   'id',
@@ -205,6 +250,7 @@ const HEADERS_NEEDED = [
 
 document.getElementById('csvInput').addEventListener('change', handleFile);
 document.getElementById('downloadBtn').addEventListener('click', downloadXlsx);
+document.getElementById('copyReportBtn').addEventListener('click', copyReport);
 
 function parseCsvLine(line, delim) {
   const out = [];
@@ -294,6 +340,7 @@ function handleFile(e) {
       renderTables(data);
       renderReport(data);
       document.getElementById('downloadBtn').disabled = false;
+      document.getElementById('copyReportBtn').disabled = false;
     } catch (err) {
       document.getElementById('statusMsg').textContent = 'Erro: ' + err.message;
     }
@@ -348,7 +395,8 @@ function renderReport(data) {
   const total = data.driver.length + data.me_extra.length;
 
   if (total === 0) {
-    document.getElementById('reportBox').textContent = 'Nenhuma rota acima de 12h encontrada no arquivo carregado.';
+    currentReportText = 'Nenhuma rota acima de 12h encontrada no arquivo carregado.';
+    document.getElementById('reportBox').textContent = currentReportText;
     return;
   }
 
@@ -357,7 +405,20 @@ function renderReport(data) {
     text += '> ' + String(g.count).padStart(2, '0') + ' ' + g.label + '\n';
   });
 
-  document.getElementById('reportBox').textContent = text.trim();
+  currentReportText = text.trim();
+  document.getElementById('reportBox').textContent = currentReportText;
+}
+
+function copyReport() {
+  if (!currentReportText) return;
+  navigator.clipboard.writeText(currentReportText).then(() => {
+    const btn = document.getElementById('copyReportBtn');
+    const original = btn.textContent;
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  }).catch(() => {
+    document.getElementById('statusMsg').textContent = 'Nao foi possivel copiar automaticamente. Selecione o texto manualmente.';
+  });
 }
 
 function downloadXlsx() {
