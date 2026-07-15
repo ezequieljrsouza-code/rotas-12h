@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Rotas acima de 12h</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: #fafaf7;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .toolbar label.file-btn {
+    background: #fff;
+    border: 1px solid #b6e04a;
+    color: #3b6d11;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .toolbar label.file-btn:hover { background: #f4f6ea; }
+  #csvInput { display: none; }
+  #downloadBtn {
+    background: #9ACD32;
+    border: none;
+    color: #1a3300;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #downloadBtn:disabled {
+    background: #e2e2da;
+    color: #999;
+    cursor: not-allowed;
+  }
+  #fileName {
+    font-size: 12.5px;
+    color: #666;
+  }
+  #statusMsg {
+    font-size: 12.5px;
+    color: #a32d2d;
+    margin-left: 4px;
+  }
+  .wrap {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .panel {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #d9e0c5;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12.5px;
+  }
+  .title-row th {
+    background: #9ACD32;
+    color: #2f4858;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 10px;
+  }
+  .total-cell {
+    text-align: right;
+    color: #2f4858;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .head-row th {
+    background: #b6e04a;
+    color: #1a1a1a;
+    font-weight: 700;
+    padding: 6px 8px;
+    font-size: 11.5px;
+    text-align: center;
+    border-top: 1px solid #a6cf3d;
+  }
+  tbody tr:nth-child(odd) td { background: #f4f6ea; }
+  tbody tr:nth-child(even) td { background: #ffffff; }
+  tbody td {
+    padding: 5px 8px;
+    text-align: center;
+    border-bottom: 1px solid #eef1e2;
+    color: #333;
+    white-space: nowrap;
+  }
+  .scroll {
+    max-height: 560px;
+    overflow-y: auto;
+  }
+  .empty-hint {
+    padding: 24px 10px;
+    text-align: center;
+    color: #999;
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <label class="file-btn" for="csvInput">Subir CSV</label>
+  <input type="file" id="csvInput" accept=".csv" />
+  <span id="fileName">Nenhum arquivo carregado</span>
+  <button id="downloadBtn" disabled>Baixar planilha (.xlsx)</button>
+  <span id="statusMsg"></span>
+</div>
+
+<div class="wrap">
+  <div class="panel">
+    <table>
+      <tr class="title-row">
+        <th colspan="5">Rota &gt; 12h | MLP</th>
+        <th class="total-cell" id="totalMlp">Total: 0</th>
+      </tr>
+      <tr class="head-row">
+        <th>ID ROTA</th><th>PREFIXO</th><th>PLACA</th><th>MLP</th><th>FACILITY</th><th>ORH</th>
+      </tr>
+    </table>
+    <div class="scroll">
+      <table>
+        <tbody id="bodyMlp">
+          <tr><td colspan="6" class="empty-hint">Suba o CSV para preencher esta tabela</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <table>
+      <tr class="title-row">
+        <th colspan="5">Rota &gt; 12h | ME Extra</th>
+        <th class="total-cell" id="totalMe">Total: 0</th>
+      </tr>
+      <tr class="head-row">
+        <th>ID ROTA</th><th>PREFIXO</th><th>PLACA</th><th>MLP</th><th>FACILITY</th><th>ORH</th>
+      </tr>
+    </table>
+    <div class="scroll">
+      <table>
+        <tbody id="bodyMe">
+          <tr><td colspan="6" class="empty-hint">Suba o CSV para preencher esta tabela</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentData = { driver: [], me_extra: [] };
+
+const HEADERS_NEEDED = [
+  'id',
+  'deliveryType',
+  'facilityId',
+  'vehicle.license',
+  'carrier',
+  'serviceCenterId',
+  'timingData.orh'
+];
+
+document.getElementById('csvInput').addEventListener('change', handleFile);
+document.getElementById('downloadBtn').addEventListener('click', downloadXlsx);
+
+function parseCsvLine(line, delim) {
+  const out = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === delim && !inQuotes) {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function fmtHours(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h + 'h' + String(m).padStart(2, '0');
+}
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('statusMsg').textContent = '';
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      let text = evt.target.result;
+      text = text.replace(/^\uFEFF/, '');
+      const lines = text.split(/\r\n|\n/).filter(l => l.length > 0);
+      if (lines.length < 2) throw new Error('Arquivo vazio ou sem dados');
+
+      const header = parseCsvLine(lines[0], ';');
+      const idx = {};
+      HEADERS_NEEDED.forEach(h => {
+        const pos = header.indexOf(h);
+        if (pos === -1) throw new Error('Coluna esperada nao encontrada: ' + h);
+        idx[h] = pos;
+      });
+
+      const data = { driver: [], me_extra: [] };
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i], ';');
+        if (cols.length < header.length) continue;
+
+        const dt = cols[idx['deliveryType']];
+        if (dt !== 'driver' && dt !== 'me_extra') continue;
+
+        const orhRaw = cols[idx['timingData.orh']];
+        if (orhRaw === '' || orhRaw === undefined) continue;
+        const orh = parseInt(orhRaw, 10);
+        if (isNaN(orh) || orh <= 720) continue;
+
+        const placa = (cols[idx['vehicle.license']] || '').trim();
+        const mlp = (cols[idx['carrier']] || '').trim();
+        const facility = (cols[idx['serviceCenterId']] || '').trim();
+
+        if (!placa || !mlp || !facility) continue;
+
+        const prefixo = (cols[idx['facilityId']] || '').trim() || '-';
+        const idRota = (cols[idx['id']] || '').trim();
+
+        data[dt].push({
+          id_rota: idRota,
+          prefixo: prefixo,
+          placa: placa,
+          mlp: mlp,
+          facility: facility,
+          orh_min: orh,
+          orh_fmt: fmtHours(orh)
+        });
+      }
+
+      data.driver.sort((a, b) => b.orh_min - a.orh_min);
+      data.me_extra.sort((a, b) => b.orh_min - a.orh_min);
+
+      currentData = data;
+      renderTables(data);
+      document.getElementById('downloadBtn').disabled = false;
+    } catch (err) {
+      document.getElementById('statusMsg').textContent = 'Erro: ' + err.message;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function renderRows(bodyId, items) {
+  const body = document.getElementById(bodyId);
+  body.innerHTML = '';
+  if (items.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-hint">Nenhuma rota encontrada</td></tr>';
+    return;
+  }
+  items.forEach(it => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${it.id_rota}</td><td>${it.prefixo}</td><td>${it.placa}</td><td>${it.mlp}</td><td>${it.facility}</td><td>${it.orh_fmt}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function renderTables(data) {
+  renderRows('bodyMlp', data.driver);
+  renderRows('bodyMe', data.me_extra);
+  document.getElementById('totalMlp').textContent = 'Total: ' + data.driver.length;
+  document.getElementById('totalMe').textContent = 'Total: ' + data.me_extra.length;
+}
+
+function downloadXlsx() {
+  const headers = ['ID ROTA', 'PREFIXO', 'PLACA', 'MLP', 'FACILITY', 'ORH'];
+  const gapCols = 1;
+  const blockWidth = headers.length;
+
+  const aoa = [];
+  const merges = [];
+
+  const row0 = new Array(blockWidth * 2 + gapCols).fill('');
+  row0[0] = 'Rota > 12h | MLP';
+  row0[blockWidth - 1] = 'Total: ' + currentData.driver.length;
+  const block2Start = blockWidth + gapCols;
+  row0[block2Start] = 'Rota > 12h | ME Extra';
+  row0[block2Start + blockWidth - 1] = 'Total: ' + currentData.me_extra.length;
+  aoa.push(row0);
+
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: blockWidth - 2 } });
+  merges.push({ s: { r: 0, c: block2Start }, e: { r: 0, c: block2Start + blockWidth - 2 } });
+
+  const row1 = new Array(blockWidth * 2 + gapCols).fill('');
+  headers.forEach((h, i) => { row1[i] = h; row1[block2Start + i] = h; });
+  aoa.push(row1);
+
+  const maxLen = Math.max(currentData.driver.length, currentData.me_extra.length);
+  for (let i = 0; i < maxLen; i++) {
+    const row = new Array(blockWidth * 2 + gapCols).fill('');
+    const d = currentData.driver[i];
+    if (d) {
+      row[0] = Number(d.id_rota);
+      row[1] = d.prefixo;
+      row[2] = d.placa;
+      row[3] = d.mlp;
+      row[4] = d.facility;
+      row[5] = d.orh_fmt;
+    }
+    const m = currentData.me_extra[i];
+    if (m) {
+      row[block2Start] = Number(m.id_rota);
+      row[block2Start + 1] = m.prefixo;
+      row[block2Start + 2] = m.placa;
+      row[block2Start + 3] = m.mlp;
+      row[block2Start + 4] = m.facility;
+      row[block2Start + 5] = m.orh_fmt;
+    }
+    aoa.push(row);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
+  const colWidths = [12, 12, 10, 26, 10, 9];
+  const cols = [];
+  colWidths.forEach(w => cols.push({ wch: w }));
+  cols.push({ wch: 3 });
+  colWidths.forEach(w => cols.push({ wch: w }));
+  ws['!cols'] = cols;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rotas > 12h');
+  XLSX.writeFile(wb, 'rotas_acima_12h.xlsx');
+}
+</script>
+
+</body>
+</html>
