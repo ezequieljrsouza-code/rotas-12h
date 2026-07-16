@@ -63,20 +63,20 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
   .toolbar label.file-btn {
     background: #fff;
-    border: 1px solid #b6e04a;
-    color: #3b6d11;
+    border: 1px solid #FFE94D;
+    color: #8A7300;
     font-weight: 600;
     font-size: 13px;
     padding: 8px 14px;
     border-radius: 6px;
     cursor: pointer;
   }
-  .toolbar label.file-btn:hover { background: #f4f6ea; }
+  .toolbar label.file-btn:hover { background: #FFFBE0; }
   #csvInput { display: none; }
   #downloadBtn {
-    background: #9ACD32;
+    background: #FFF159;
     border: none;
-    color: #1a3300;
+    color: #3A3300;
     font-weight: 700;
     font-size: 13px;
     padding: 9px 16px;
@@ -117,7 +117,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     font-size: 12.5px;
   }
   .title-row th {
-    background: #9ACD32;
+    background: #FFF159;
     color: #2f4858;
     font-size: 15px;
     font-weight: 700;
@@ -132,14 +132,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     white-space: nowrap;
   }
   .head-row th {
-    background: #b6e04a;
+    background: #FFE94D;
     color: #1a1a1a;
     font-weight: 700;
     padding: 6px 8px;
     font-size: 11.5px;
     text-align: center;
   }
-  tbody tr:nth-child(odd) td { background: #f4f6ea; }
+  tbody tr:nth-child(odd) td { background: #FFFBE0; }
   tbody tr:nth-child(even) td { background: #ffffff; }
   tbody td {
     padding: 5px 8px;
@@ -179,15 +179,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
   #copyReportBtn {
     background: #fff;
-    border: 1px solid #b6e04a;
-    color: #3b6d11;
+    border: 1px solid #FFE94D;
+    color: #8A7300;
     font-weight: 600;
     font-size: 12px;
     padding: 5px 12px;
     border-radius: 6px;
     cursor: pointer;
   }
-  #copyReportBtn:hover { background: #f4f6ea; }
+  #copyReportBtn:hover { background: #FFFBE0; }
   #copyReportBtn:disabled {
     color: #999;
     border-color: #ddd;
@@ -216,6 +216,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     border-radius: 8px;
     padding: 14px 16px;
     text-align: center;
+    border-top: 4px solid #FFF159;
   }
   .kpi-card .kpi-label {
     font-size: 11.5px;
@@ -227,7 +228,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .kpi-card .kpi-value {
     font-size: 26px;
     font-weight: 700;
-    color: #3b6d11;
+    color: #8A7300;
     margin-top: 4px;
   }
   .charts-row {
@@ -553,7 +554,7 @@ let chartTipo = null;
 let chartFacility = null;
 let chartCarrier = null;
 
-const CHART_COLORS = ['#9ACD32', '#5B9BD5', '#F2B84B', '#E07A5F', '#7A9E7E', '#A084CA', '#4C9F70', '#D46A6A'];
+const CHART_COLORS = ['#FFF159', '#5B9BD5', '#F2B84B', '#E07A5F', '#7A9E7E', '#A084CA', '#4C9F70', '#D46A6A'];
 
 if (typeof Chart !== 'undefined') {
   Chart.register({
